@@ -1,28 +1,36 @@
 from db import database as db 
 from db import watchlists as wl
-from communications import send_data, send_text, read_data, read_req, read_text, send_search
-import time
+from communications import send_data, read_data, read_req, read_text, send_search
 
 
+# Communication Pipes
+acct_request = "acct_request.txt"
+acct_response = "acct_resp.txt"
+form_request = "form_request.txt"
+form_response = "form_resp.txt"
+add_listing_request = "add_request.txt"
+add_listing_response = "add_resp.txt"
+search_request= 'request.txt'
+search_response = 'results.txt'
 
 def display_listings(data):
     for house in data:
         print(f"""
         id:         {house["id"]}
         address:    {house["address"]}
-        price:      {house["price"]}
+        price:      ${house["price"]}
         bed:        {house["bed"]}
         bath:       {house["bath"]}
         sqft:       {house["sqft"]}
         city:       {house["city"]}
-    """)
+        """)
     return
 def display_search(data):
     for house in data:
         print(f"""
         id:         {house["id"]}
         address:    {house["address"]}
-        price:      {house["price"]}
+        price:      ${house["price"]}
         bed:        {house["bed"]}
         bath:       {house["bath"]}
         sqft:       {house["sqft"]}
@@ -37,7 +45,7 @@ def display_details(num, db):
     print(f"""
         id:         {house["id"]}
         address:    {house["address"]}
-        price:      {house["price"]}
+        price:      ${house["price"]}
         bed:        {house["bed"]}
         bath:       {house["bath"]}
         sqft:       {house["sqft"]}
@@ -45,7 +53,7 @@ def display_details(num, db):
         List Date:  {house["date"]}
         $/sqft:     {house["ppf"]}
         contact:    {house["email"]}
-    """)
+        """)
     return
 
 def display_wl(arr):
@@ -89,27 +97,15 @@ enter y when asked to confirm
 the command sequence from this page is: m-x-y
 """
 
-#Files
-acct_request = "acct_request.txt"
-acct_response = "acct_resp.txt"
-form_request = "form_request.txt"
-form_response ="form_resp.txt"
-add_listing_request = "add_request.txt"
-add_listing_response = "add_resp.txt"
-search_request= 'request.txt'
-search_response = 'results.txt'
-
-print("---------- HOUSE HUNTER ----------\n\n")
 
 
 
-print("""\n
-    The login process is simple and easy:
-    first enter your username
-    a second prompt will request your password
-    you will then be taken to the main menu
-    """)
+
+
+
+
 def main():
+    print("---------- HOUSE HUNTER ----------\n\n")
     while True:
         print("""
         enter one of the following commands to navigate the site
@@ -119,22 +115,23 @@ def main():
         user_data = {}
         comm = input("enter here: ")
         match comm:
+            # Login attempt
             case "a":
-                #pwd login
                 while True:
                     user_data["username"] = input("Please enter your user name: ")
-                    
                     user_data["password"] = input("Please enter your password: ")
-
+                    # Send Login request to Accounts MS
                     send_data(acct_request, user_data, "login")
-                    # set this up to read data
+                    # Reads Login Response from Accounts
                     resp, data = read_req(acct_response)
-                    print("resp: ", resp)
+                    
                     if resp == "valid":
+                        print("Login Successful")
                         user_data = data
                         break
                     print("Invalid attempt, please try again")
-            case "b": # Account Creation
+            # Account Creation
+            case "b": 
                 # Confirm unique user name
                 while True:
                     user_data["username"] = input("Please enter your user name: ")
@@ -142,6 +139,7 @@ def main():
                     send_data(acct_request, user_data, "username")
                     # reads response from acct_response pipe
                     if not read_text(acct_response) == "valid":
+                        print("That username is taken, please try another")
                         continue
                     break
                 # Validate Password
@@ -151,17 +149,24 @@ def main():
                     user_data["password"] = input("Please enter your password: ")
                     # sends data to form validation through form_request pipe 
                     send_data(form_request, user_data, "password")
+                    # Read validation response from MS
                     if not read_text(form_response) == 'valid':
                         print("Invalid password")
                         continue
                     break
+                # Validate Email
                 while True:
                     user_data["email"] = input("Please enter your email: ")
+                    # Send email validation request to Form Validation MS 
                     send_data(form_request, user_data, "email")
+                    # Read validation response from MS - loop unless it is valid
                     if not read_text(form_response) == 'valid':
                         print("Invalid email")
                         continue
                     break
+                # Send creation request to Accounts MS
+                send_data(acct_request, user_data, "create")
+                
             case _:
                 print("invalid command")
                 continue

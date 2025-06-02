@@ -1,8 +1,6 @@
-from communications import send_data, send_text, read_data, read_req, read_text
-import time
-import json
+from communications import send_text, read_req
 import re
-
+# Communication Pipes
 request_file = "form_request.txt"
 resp_file = "form_resp.txt"
 
@@ -28,26 +26,36 @@ def email_validation(email):
     else:
         return False
 
-def house_validation(house):
-    pass
+def validate_house(data):
+    if data["price"] < 50000 or data["sqft"] < 500:
+        return False
+    if data["bed"] < 1 or data["bath"] < 1:
+        return False
+    return True
 
 def process_req(request_code, data):
     match request_code:
         case "password":
             if pwd_validation(data["password"]):
                 send_text(resp_file, "valid")
+                print("valid")
             else:
                 send_text(resp_file, "rejected")
+                print("invalid request")
         case "email":
             if email_validation(data["email"]):
                 send_text(resp_file, "valid")
+                print("valid")
             else:
                 send_text(resp_file, "rejected")
+                print("invalid request")
         case "house":
-            if type(data["bed"]) == int and type(data["bath"]) == int :
+            if validate_house(data):
                 send_text(resp_file, "valid")
+                print("valid")
             else:
                 send_text(resp_file, "rejected")
+                print("invalid request")
 
 def main():
 
@@ -56,6 +64,7 @@ def main():
 
         request_code, data = read_req(request_file)
         if request_code:
+            print(f"{request_code} request received")
             process_req(request_code, data)
 
 
