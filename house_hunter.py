@@ -1,7 +1,7 @@
 from db import database as db 
 from db import watchlists as wl
 from communications import send_data, read_data, read_req, read_text, send_search
-
+import time
 
 # Communication Pipes
 acct_request = "acct_request.txt"
@@ -138,34 +138,38 @@ def main():
                     # sends data to Accounts MS through acct_request pipe 
                     send_data(acct_request, user_data, "username")
                     # reads response from acct_response pipe
+                    time.sleep(.2)
                     if not read_text(acct_response) == "valid":
                         print("That username is taken, please try another")
                         continue
                     break
                 # Validate Password
                 while True:
-                    print("paswords must be 8-20 characters")
-                    print("Passwords must contain an uppercase letter, a lowercase letter and a number")
+                    print("\npaswords must be 8-20 characters")
+                    print("Passwords must contain an uppercase letter, a lowercase letter and a number\n")
                     user_data["password"] = input("Please enter your password: ")
                     # sends data to form validation through form_request pipe 
                     send_data(form_request, user_data, "password")
                     # Read validation response from MS
+                    time.sleep(.2)
                     if not read_text(form_response) == 'valid':
                         print("Invalid password")
                         continue
                     break
                 # Validate Email
                 while True:
-                    user_data["email"] = input("Please enter your email: ")
+                    user_data["email"] = input("\nPlease enter your email: ")
                     # Send email validation request to Form Validation MS 
                     send_data(form_request, user_data, "email")
                     # Read validation response from MS - loop unless it is valid
+                    time.sleep(.2)
                     if not read_text(form_response) == 'valid':
-                        print("Invalid email")
+                        print("Invalid email\n")
                         continue
                     break
                 # Send creation request to Accounts MS
                 send_data(acct_request, user_data, "create")
+                wl[user_data["username"]] = []
                 
             case _:
                 print("invalid command")
@@ -354,6 +358,7 @@ def main():
                                 # Send Search request
                                 send_search(search_request, db, search_params)
                                 # Read response and display
+                                time.sleep(.2)
                                 results = read_data(search_response)
                                 display_search(results)
                                 break
@@ -387,11 +392,12 @@ def main():
                     send_data(form_request, house_for_sale, "house")
                     print("Validating listing...")
                     # Read validation response
+                    time.sleep(.2)
                     if read_text(form_response) == 'valid':
                         # Send Valid data to Add Listings Microservice
                         send_data(add_listing_request, house_for_sale, "create")
                         # Read Listing Response
-                        # time.sleep(.5)
+                        time.sleep(.2)
                         new_listing = read_data(add_listing_response)
                         db.append(new_listing)
                         print("New Listing created:")

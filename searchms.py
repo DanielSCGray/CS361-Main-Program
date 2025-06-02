@@ -119,12 +119,13 @@ def main():
             try:
                 # Step 1: Load parameters and data from request file
                 params, listings = load_request_file(request_file)
-
+                print("search request received")
                 # Step 2: Filter listings based on search criteria
                 filtered = filter_listings(params, listings)
 
                 # Step 3: Write matching results to output file
                 write_results(filtered, result_file)
+                print("response sent")
 
                 # Step 4: Delete request file to prevent reprocessing
                 os.remove(request_file)
