@@ -44,7 +44,7 @@ def process_req(request_code, data):
             else:
                 send_text(resp_file, "rejected")
         case "house":
-            if type(data["beds"]) == int and type(data["baths"]) == int :
+            if type(data["bed"]) == int and type(data["bath"]) == int :
                 send_text(resp_file, "valid")
             else:
                 send_text(resp_file, "rejected")

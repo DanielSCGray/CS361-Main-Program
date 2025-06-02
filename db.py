@@ -136,6 +136,10 @@ watchlists = {
         "bob" : [database[6], database[9]]
         }
 
-password_db = {
-    "bob": "123asfd"
+accounts_db = {
+    "bob": {
+        "username": "bob",
+        "password": "a",
+        "email": "bob@mail.com"
+    }
 }

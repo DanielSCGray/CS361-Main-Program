@@ -1,6 +1,6 @@
 from db import database as db 
 from db import watchlists as wl
-from communications import send_data, send_text, read_data, read_req, read_text
+from communications import send_data, send_text, read_data, read_req, read_text, send_search
 import time
 
 
@@ -14,9 +14,23 @@ def display_listings(data):
         bed:        {house["bed"]}
         bath:       {house["bath"]}
         sqft:       {house["sqft"]}
-        City:       {house["city"]}
+        city:       {house["city"]}
     """)
     return
+def display_search(data):
+    for house in data:
+        print(f"""
+        id:         {house["id"]}
+        address:    {house["address"]}
+        price:      {house["price"]}
+        bed:        {house["bed"]}
+        bath:       {house["bath"]}
+        sqft:       {house["sqft"]}
+        city:       {house["city"]}
+        list date:  {house["date"]}
+        $/sqft:     {house["ppf"]}
+        contact:    {house["email"]}
+        """)
 
 def display_details(num, db):
     house = db[num]
@@ -30,8 +44,7 @@ def display_details(num, db):
         City:       {house["city"]}
         List Date:  {house["date"]}
         $/sqft:     {house["ppf"]}
-        realtor:    {house["email"]}
-        Motivated Seller:  {house["motivated"]}
+        contact:    {house["email"]}
     """)
     return
 
@@ -81,7 +94,10 @@ acct_request = "acct_request.txt"
 acct_response = "acct_resp.txt"
 form_request = "form_request.txt"
 form_response ="form_resp.txt"
-
+add_listing_request = "add_request.txt"
+add_listing_response = "add_resp.txt"
+search_request= 'request.txt'
+search_response = 'results.txt'
 
 print("---------- HOUSE HUNTER ----------\n\n")
 
@@ -112,7 +128,7 @@ def main():
 
                     send_data(acct_request, user_data, "login")
                     # set this up to read data
-                    resp, data = read_data(acct_response)
+                    resp, data = read_req(acct_response)
                     print("resp: ", resp)
                     if resp == "valid":
                         user_data = data
@@ -176,7 +192,9 @@ def main():
             enter one of the following commands to navigate the site
             a) browse listings - see all our available listings
             b) check your watchlist - see properties you have saved
-            c) get help - get an overview of our site features
+            c) search listings - search listings with specific criteria
+            d) add a listing - post a property for sale
+            e) get help - get an overview of our site features
             x) exit the program
             """)
         main_comm = input("enter here: ")
@@ -187,6 +205,10 @@ def main():
             case 'b':
                 show_watchlist = True
             case 'c':
+                show_search = True
+            case 'd':
+                show_add_listing = True
+            case 'e':
                 show_help = True
             case 'x':
                 print("exiting will log you out and end your session")
@@ -289,6 +311,95 @@ def main():
                     show_help = False
                 case _:
                     print("invalid input, please try again")
+        
+        while show_search:
+            print("---------- SEARCH LISTINGS ----------\n\n")
+            print("""
+            enter one of the following commands
+            a) search for a property
+            m) return to main menu
+            """)
+            search_comm = input("enter here: ")
+            match search_comm:
+                case 'a':
+                    search_params = {"price_range": None, "min_beds": None, "min_baths": None, "city": None }
+                    while True:
+                        print("""
+                        add criteria to your search and then execute with the following commands
+                        a) set price range
+                        b) set minimum bedrooms
+                        c) set minimum bathrooms
+                        d) select a city
+                        e) submit search and see results
+                        """)
+                        command = input("enter here: ")
+                        match command:
+                            case 'a':
+                                min_price = int(input("enter minimum price: "))
+                                max_price = int(input("enter maximum price: "))
+                                search_params["price_range"] = [min_price, max_price]
+                            case 'b':
+                                search_params["min_beds"] = int(input("enter minimum bedrooms: "))
+                            case 'c':
+                                search_params["min_baths"] = int(input("enter minimum bathrooms: "))
+                            case 'd':
+                                search_params["city"] = int(input("enter city: "))
+                            case 'e':
+                                print("Your Results")
+                                # Send Search request
+                                send_search(search_request, db, search_params)
+                                # Read response and display
+                                results = read_data(search_response)
+                                display_search(results)
+                                break
+                            case _:
+                                print("invalid input, please try again")
+
+
+                case 'm':
+                    show_search = False
+                case _:
+                    print("invalid input, please try again")
+
+        while show_add_listing:
+            print("---------- LIST FOR SALE ----------\n\n")
+            print("""
+            enter one of the following commands
+            a) list a property for sale 
+            m) return to main menu
+            """)
+            house_for_sale = {"id": len(db)+1, "email": user_data["email"]}
+            add_comm = input("enter here: ")
+            match add_comm:
+                case 'a':
+                    house_for_sale["address"] = input("enter the property address: ")
+                    house_for_sale["price"] = int(input("enter the asking price in thousands: ")) * 1000
+                    house_for_sale["bed"] = int(input("enter the number of bedrooms: "))
+                    house_for_sale["bath"] = int(input("enter the number of bathrooms: "))
+                    house_for_sale["sqft"] = int(input("enter the property's square footage: "))
+                    house_for_sale["city"] = input("enter the city the property is located in: ")
+                    # Request form validation
+                    send_data(form_request, house_for_sale, "house")
+                    print("Validating listing...")
+                    # Read validation response
+                    if read_text(form_response) == 'valid':
+                        # Send Valid data to Add Listings Microservice
+                        send_data(add_listing_request, house_for_sale, "create")
+                        # Read Listing Response
+                        # time.sleep(.5)
+                        new_listing = read_data(add_listing_response)
+                        db.append(new_listing)
+                        print("New Listing created:")
+                        display_details(-1, db)
+                        
+                    else: 
+                        print("Invalid listing")
+                        
+                case 'm':
+                    show_add_listing = False
+                case _:
+                    print("invalid input, please try again")
+
 
 
 

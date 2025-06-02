@@ -4,25 +4,24 @@ import json
 from datetime import date
 
 
-request_file = "listing_request.txt"
-resp_file = "listing_resp.txt"
+request_file = "add_request.txt"
+resp_file = "add_resp.txt"
 
 def process_house(data):
-    data["ppf"] = round((data["price"] / data["sqft"], 2))
+    data["ppf"] = round(data["price"] / data["sqft"], 2)
     data["city"] = data["city"].capitalize()
     data["address"] = data["address"].title()
-    data["date"] = date.today()
+    data["date"] = str(date.today())
     return data
 
 def main():
 
 
     while True:
-        time.sleep(.103)
 
-        request_code, data = read_data(request_file)
+        request_code, data = read_req(request_file)
         if request_code:
-            new_data = process_house(request_code, data)
+            new_data = process_house(data)
             send_data(resp_file, new_data)
 
 

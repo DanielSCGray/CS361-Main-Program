@@ -1,8 +1,7 @@
 from communications import send_data, send_text, read_data, read_req, read_text
-import time
-import json
+from db import accounts_db as accounts
 
-accounts = {}
+
 request_file = "acct_request.txt"
 
 acct_response = "acct_resp.txt"

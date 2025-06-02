@@ -41,3 +41,10 @@ def read_text(file_name):
     with open(file_name, 'w') as f:
         pass
     return text
+
+def send_search(file_name:str, data:list, params:dict):
+    with open(file_name, 'w') as f:
+        f.write(json.dumps(params))
+        f.write("\n")
+        datastr = json.dumps(data)
+        f.write(datastr)
