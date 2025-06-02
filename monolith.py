@@ -1,12 +1,9 @@
 from db import database as db 
 from db import watchlists as wl
-from db import password_db as passwords
+from communications import send_data, send_text, read_data, read_req, read_text
+import time
 
 
-def verify(username, pwd):
-    if passwords[username] == pwd:
-        return True
-    return False
 
 def display_listings(data):
     for house in data:
@@ -78,14 +75,17 @@ select exit (x)
 enter y when asked to confirm
 the command sequence from this page is: m-x-y
 """
+
+#Files
+acct_request = "acct_request.txt"
+acct_response = "acct_resp.txt"
+form_request = "form_request.txt"
+form_response ="form_resp.txt"
+
+
 print("---------- HOUSE HUNTER ----------\n\n")
 
-print("""
-    Welcome to House Hunter!
-    We feature listings through out the state of Oregon
-    You can browse our listings, save and track any house that catches your eye
-    Find your dream home today!
-    """)
+
 
 print("""\n
     The login process is simple and easy:
@@ -93,142 +93,207 @@ print("""\n
     a second prompt will request your password
     you will then be taken to the main menu
     """)
-
-while True:
-    user = input("Please enter your user name: ")
-    password = input("Please enter your password: ")
-
-    if verify(user, password):
-        break
-    print("Invalid attempt, please try again")
-
-while True:
-    show_listings = False
-    show_details = False
-    show_watchlist = False
-    show_help = False
-
-    print("---------- MAIN MENU ----------\n\n")
-    print("""
-        enter one of the following commands to navigate the site
-        a) browse listings - see all our available listings
-        b) check your watchlist - see properties you have saved
-        c) get help - get an overview of our site features
-        x) exit the program
-        """)
-    main_comm = input("enter here: ")
-
-    match main_comm:
-        case 'a':
-            show_listings = True
-        case 'b':
-            show_watchlist = True
-        case 'c':
-            show_help = True
-        case 'x':
-            confirm = input("are you sure you want to exit (y/n)?")
-            if confirm == 'y':
-                break
-        case _:
-            print("invalid input, please try again")
-    
-    while show_listings:
-        print("---------- LISTINGS ----------\n\n")
-        display_listings(db)
+def main():
+    while True:
         print("""
-            enter one of the following commands
-            a) details - get detailed information about a property 
-            m) return to main menu
-            """)
-        listing_comm = input("enter here: ")
+        enter one of the following commands to navigate the site
+        a) log in
+        b) create new account
+        """)
+        user_data = {}
+        comm = input("enter here: ")
+        match comm:
+            case "a":
+                #pwd login
+                while True:
+                    user_data["username"] = input("Please enter your user name: ")
+                    
+                    user_data["password"] = input("Please enter your password: ")
 
-        match listing_comm:
+                    send_data(acct_request, user_data, "login")
+                    # set this up to read data
+                    resp, data = read_data(acct_response)
+                    print("resp: ", resp)
+                    if resp == "valid":
+                        user_data = data
+                        break
+                    print("Invalid attempt, please try again")
+            case "b": # Account Creation
+                # Confirm unique user name
+                while True:
+                    user_data["username"] = input("Please enter your user name: ")
+                    # sends data to Accounts MS through acct_request pipe 
+                    send_data(acct_request, user_data, "username")
+                    # reads response from acct_response pipe
+                    if not read_text(acct_response) == "valid":
+                        continue
+                    break
+                # Validate Password
+                while True:
+                    print("paswords must be 8-20 characters")
+                    print("Passwords must contain an uppercase letter, a lowercase letter and a number")
+                    user_data["password"] = input("Please enter your password: ")
+                    # sends data to form validation through form_request pipe 
+                    send_data(form_request, user_data, "password")
+                    if not read_text(form_response) == 'valid':
+                        print("Invalid password")
+                        continue
+                    break
+                while True:
+                    user_data["email"] = input("Please enter your email: ")
+                    send_data(form_request, user_data, "email")
+                    if not read_text(form_response) == 'valid':
+                        print("Invalid email")
+                        continue
+                    break
+            case _:
+                print("invalid command")
+                continue
+        break
+
+    user = user_data["username"]
+    while True:
+        show_listings = False
+        show_details = False
+        show_watchlist = False
+        show_help = False
+        show_add_listing = False
+        show_search = False
+
+        print("---------- MAIN MENU ----------\n\n")
+
+        print("""
+        Welcome to House Hunter!
+        We feature listings through out the state of Oregon.
+        You can browse through listings for general information,
+        select properties to learn more details,
+        and save prorties that catch your eye to your personal watchlist.
+        
+        Find your dream home today!
+        """)
+
+        print("""
+            enter one of the following commands to navigate the site
+            a) browse listings - see all our available listings
+            b) check your watchlist - see properties you have saved
+            c) get help - get an overview of our site features
+            x) exit the program
+            """)
+        main_comm = input("enter here: ")
+
+        match main_comm:
             case 'a':
-                show_details = True
-            case 'm':
-                show_listings =False
+                show_listings = True
+            case 'b':
+                show_watchlist = True
+            case 'c':
+                show_help = True
+            case 'x':
+                print("exiting will log you out and end your session")
+                confirm = input("are you sure you want to exit (y/n)?")
+                if confirm == 'y':
+                    break
             case _:
                 print("invalid input, please try again")
-        while show_details:
-            print(f"each property has a unique ID between 1 and {len(db)}")
-            selection = input("enter the ID of the property you want to see more about: ")
-            selection = int(selection)
-            selection -= 1
-            if selection in range(len(db)):
-                display_details(selection, db)
-                print("""House Hunter allows you to save properties to your personal watchlist.
-                    while it is possible to add as many houses as you want, we recommend keeping 
-                    an orderly list by only adding properties that make sense for you.\n""")
-                add = input("add this property to your watchlist(y/n)? ")
-                if add == 'y':
-                    wl[user].append(db[selection])
-            else:
-                print("invalid listing")
+        
+        while show_listings:
+            print("---------- LISTINGS ----------\n\n")
+            display_listings(db)
             print("""
-            enter one of the following commands
-            a) select another property 
-            b) return to listings
-            m) return to main menu
-            """)
-            details_comm = input("enter here: ")
-            match details_comm:
+                enter one of the following commands
+                a) details - get detailed information about a property 
+                m) return to main menu
+                """)
+            listing_comm = input("enter here: ")
+
+            match listing_comm:
                 case 'a':
-                    continue
-                case 'b':
-                    show_details = False
+                    show_details = True
                 case 'm':
-                    show_details = False
                     show_listings =False
                 case _:
-                    print("invalid input, returning to details menu")
+                    print("invalid input, please try again")
+            while show_details:
+                print(f"each property has a unique ID between 1 and {len(db)}")
+                selection = input("enter the ID of the property you want to see more about: ")
+                selection = int(selection)
+                selection -= 1
+                if selection in range(len(db)):
+                    display_details(selection, db)
+                    print("""House Hunter allows you to save properties to your personal watchlist.
+                        while it is possible to add as many houses as you want, we recommend keeping 
+                        an orderly list by only adding properties that make sense for you.\n""")
+                    add = input("add this property to your watchlist(y/n)? ")
+                    if add == 'y':
+                        wl[user].append(db[selection])
+                else:
+                    print("invalid listing")
+                print("""
+                enter one of the following commands
+                a) select another property 
+                b) return to listings
+                m) return to main menu
+                """)
+                details_comm = input("enter here: ")
+                match details_comm:
+                    case 'a':
+                        continue
+                    case 'b':
+                        show_details = False
+                    case 'm':
+                        show_details = False
+                        show_listings =False
+                    case _:
+                        print("invalid input, returning to details menu")
 
-    while show_watchlist:
-        print("---------- WATCHLIST ----------\n\n")
-        display_wl(wl[user])
-        print("""
-        enter one of the following commands
-        a) remove a property 
-        m) return to main menu
-        """)
-        watch_comm = input("enter here: ")
-        match watch_comm:
-            case 'a':
-                target = int(input("select an id to delete: "))
-                print("this property will be removed from your watchlist and must be manually added back")
-                confirm = confirm = input("are you sure you want to remove this (y/n)?")
-                if confirm == 'y':
-                    remove_from_wl(wl[user], target)
-            case 'm':
-                show_watchlist = False
-                
-            case _:
-                print("invalid input, returning to details menu")
+        while show_watchlist:
+            print("---------- WATCHLIST ----------\n\n")
+            display_wl(wl[user])
+            print("""
+            enter one of the following commands
+            a) remove a property 
+            m) return to main menu
+            """)
+            watch_comm = input("enter here: ")
+            match watch_comm:
+                case 'a':
+                    target = int(input("select an id to delete: "))
+                    print("this property will be removed from your watchlist and must be manually added back")
+                    confirm = confirm = input("are you sure you want to remove this (y/n)?")
+                    if confirm == 'y':
+                        remove_from_wl(wl[user], target)
+                case 'm':
+                    show_watchlist = False
+                    
+                case _:
+                    print("invalid input")
 
-    while show_help:
-        print("---------- HELP ----------\n\n")
-        print("""
-        select a topic to learn more about
-        a) how to add a property to my watchlist 
-        b) how to remove a property from my watchlist
-        c) how to exit
-        m) return to main menu
-        """)
-        help_comm = input("enter here: ")
-        match help_comm:
-            case 'a':
-                print(add_help)
-            case 'b':
-                print(remove_help)
-            case 'c':
-                print(exit_help)
-            case 'm':
-                show_help = False
-            case _:
-                print("invalid input, please try again")
-
-
+        while show_help:
+            print("---------- HELP ----------\n\n")
+            print("""
+            select a topic to learn more about
+            a) how to add a property to my watchlist 
+            b) how to remove a property from my watchlist
+            c) how to exit
+            m) return to main menu
+            """)
+            help_comm = input("enter here: ")
+            match help_comm:
+                case 'a':
+                    print(add_help)
+                case 'b':
+                    print(remove_help)
+                case 'c':
+                    print(exit_help)
+                case 'm':
+                    show_help = False
+                case _:
+                    print("invalid input, please try again")
 
 
+
+if __name__ == "__main__":
+    main()
 
 
 
